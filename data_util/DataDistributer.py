@@ -128,5 +128,5 @@ class DataPartitioner(object):
             #subset_dataset = CustomSubset(self.dataset, self.client_idcs[i], preprocess)
             subset_dataset = Data.Subset(self.dataset, torch.from_numpy(self.client_idcs[i]))
             distributed_dataloaders.append(Data.DataLoader(subset_dataset, batch_size=batch_size, 
-                                                           shuffle=shuffle, num_workers=3))
+                                                           shuffle=shuffle, num_workers=2))
         return distributed_dataloaders

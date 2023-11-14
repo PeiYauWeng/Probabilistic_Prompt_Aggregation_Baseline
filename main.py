@@ -90,7 +90,7 @@ if __name__ == '__main__':
     else:
         raise ValueError("Input dataset is not supported")
     # setup global testing set & distributed dataset
-    testloader = Data.DataLoader(testset, batch_size=100, num_workers=3, shuffle=False)
+    testloader = Data.DataLoader(testset, batch_size=100, num_workers=2, shuffle=False)
     data_partitioner = DataPartitioner(trainset, args.n_clients)
         
     if args.alpha == 0.1:
