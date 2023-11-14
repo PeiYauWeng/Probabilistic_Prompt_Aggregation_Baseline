@@ -7,14 +7,15 @@ from util.train_eval import train, evaluate
 from util.print_info import print_epoch_end
 
 class fedavg(nn.Module):
-    def __init__(self, server_model, scenario, loss_fun, fed_method='fedavg'):
+    def __init__(self, server_model, scenario, loss_fun, fed_method='fedavg', device='cuda'):
         super(fedavg, self).__init__()
         self.server_model = server_model
         self.server_model.eval()
         self.scenario = scenario
-        self.client_model = self.scenario.init_client_models(server_model)
+        self.client_model = self.scenario.init_client_models(server_model, device=device)
         self.loss_fun = loss_fun
         self.fed_method = fed_method
+        self.device = device
         self.history = [list() for _ in range(scenario.n_clients)]
         self.selected_client_index = np.arange(self.scenario.n_clients_each_round)
         self.selected_distributed_dataloaders = self.scenario.distributed_dataloaders[:self.scenario.n_clients_each_round]
@@ -37,20 +38,22 @@ class fedavg(nn.Module):
                       file=output_file)
             for epoch in range(epochs):
                 self.client_model[i].train()
-                l, t, a = train(self.client_model[i], self.selected_distributed_dataloaders[i], optimizer, self.loss_fun)
+                l, t, a = train(self.client_model[i], self.selected_distributed_dataloaders[i], 
+                                optimizer, self.loss_fun, self.device)
                 if print_output:
                     print_epoch_end(epoch, l, t, a, output_file)
 
     def server_aggre(self):
         self.server_model, self.client_model = communication(self.server_model, self.client_model,
-                                                self.selected_client_weights, self.fed_method)
+                                                             self.selected_client_weights, self.fed_method, 
+                                                             device=self.device)
 
     def client_eval(self, testloader):
         for i in range(self.scenario.n_clients_each_round):
-            train_loss, train_acc = evaluate(self.client_model[i], testloader, self.loss_fun)
+            train_loss, train_acc = evaluate(self.client_model[i], testloader, self.loss_fun, self.device)
             print(f'Client_{self.selected_client_index[i]+1}: Train_loss: {train_loss}; Accuracy: {train_acc}')
 
     def server_eval(self, testloader, nround, output_file):
-        eval_loss, eval_acc = evaluate(self.server_model, testloader, self.loss_fun)
+        eval_loss, eval_acc = evaluate(self.server_model, testloader, self.loss_fun, self.device)
         print(f'Comm_round_{nround+1} Server model: Eval_loss: {eval_loss}; Accuracy: {eval_acc}', file=output_file)
         return eval_loss, eval_acc

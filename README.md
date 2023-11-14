@@ -26,4 +26,5 @@ Support the following dataset:
 ## Usage
 
 1. Modify .sh file if you need
-2. `bash run_cifar10.sh` or `bash run_cifar100.sh`
+2. `bash run_cifar10.sh`
+3. You can assign which GPU to run.  `bash run_fedavg_cifar100.sh n`  In which, n means n th GPU. For example, if GPU:1 is availabel, then  `bash run_fedavg_cifar100.sh 1`

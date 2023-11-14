@@ -7,8 +7,8 @@ from util.train_eval import train, evaluate, train_prox
 from util.print_info import print_epoch_end
 
 class fedprox(fedavg):
-    def __init__(self, server_model, scenario, loss_fun, mu, fed_method='fedprox'):
-        super(fedprox, self).__init__(server_model, scenario, loss_fun, fed_method)
+    def __init__(self, server_model, scenario, loss_fun, mu, fed_method='fedprox', device='cuda'):
+        super(fedprox, self).__init__(server_model, scenario, loss_fun, fed_method, device)
         self.mu = mu
 
     def client_train(self, comm_round, epochs, lr, output_file, opt_func=torch.optim.Adam, print_output=False):
@@ -27,9 +27,9 @@ class fedprox(fedavg):
                 if comm_round > 0:
                     l, t, a = train_prox(self.client_model[i], self.server_model,
                                          self.selected_distributed_dataloaders[i],
-                                         optimizer, self.loss_fun, self.mu)
+                                         optimizer, self.loss_fun, self.mu, self.device)
                 else:
                     l, t, a = train(self.client_model[i], self.selected_distributed_dataloaders[i],
-                                    optimizer, self.loss_fun)
+                                    optimizer, self.loss_fun, self.device)
                 if print_output:
                     print_epoch_end(epoch, l, t, a, output_file)

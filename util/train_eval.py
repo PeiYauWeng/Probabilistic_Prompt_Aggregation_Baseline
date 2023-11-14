@@ -247,7 +247,8 @@ def train_eval_pFedPG(clients, prompt_gen, vit_net, comm_rounds, local_epochs, t
                             vit_net=vit_net,
                             criteria=criteria,
                             output_file=output_file,
-                            print_out=print_out)
+                            print_out=print_out,
+                            device=device)
     # print evaluate all clients and get average accuracy
     accuracy_storage = list()
     for j in range(len(clients)):

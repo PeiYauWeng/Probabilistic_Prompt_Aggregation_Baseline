@@ -59,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_model', type=bool, default=False,
                         help='Save the trained model in the last epoch')
     args = parser.parse_args()
-    
+    print(args.device)
     #check if cross_devices or corss_silo
     if args.n_clients > args.n_sampled_clients:
         scenrio_type = 'cross_devices'
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                                                   num_classes=num_classes), args.device)
         server_model.build_trainable_keys()
         if args.alg == 'scaffold':
-            server_model.init_contorl_parameter_for_scaffold()
+            server_model.init_contorl_parameter_for_scaffold(device=args.device)
         #get FL algorithm
         if '_' in args.alg:
             algclass = get_algorithm(args.alg.split('_')[0])
@@ -152,17 +152,17 @@ if __name__ == '__main__':
             algclass = get_algorithm(args.alg)
         if args.alg == 'fedprox':
             algo = algclass(server_model=server_model,scenario=fl_scen,
-                        loss_fun=nn.CrossEntropyLoss(), mu=args.mu)
+                        loss_fun=nn.CrossEntropyLoss(), mu=args.mu, device=args.device)
         elif args.alg == 'fedopt':
             algo = algclass(server_model=server_model,scenario=fl_scen,
-                        loss_fun=nn.CrossEntropyLoss(), global_lr=args.fedopt_global_lr)
+                        loss_fun=nn.CrossEntropyLoss(), global_lr=args.fedopt_global_lr, device=args.device)
         elif args.alg == 'fedprox_gmm':
             print('gmm')
             algo = algclass(server_model=server_model,scenario=fl_scen,
-                        loss_fun=nn.CrossEntropyLoss(), mu=args.mu, fed_method='simple_gmm_prompt')
+                        loss_fun=nn.CrossEntropyLoss(), mu=args.mu, fed_method='simple_gmm_prompt', device=args.device)
         else:
             algo = algclass(server_model=server_model,scenario=fl_scen,
-                            loss_fun=nn.CrossEntropyLoss())
+                            loss_fun=nn.CrossEntropyLoss(), device=args.device)
         
         for comm_round in range(args.comms):
             algo.client_train(comm_round=comm_round, epochs=args.local_eps, lr=args.lr, 
@@ -188,7 +188,12 @@ if __name__ == '__main__':
         vit_net.build_trainable_keys()
         # setup distributed testset for personalized models
         test_partitioner = DataPartitioner(testset, args.n_clients)
-        test_partitioner.dirichlet_split_noniid(args.alpha, least_samples=1, manual_seed=seed)
+        if args.data_distribution == 'non_iid_dirichlet':
+            test_partitioner.dirichlet_split_noniid(args.alpha, least_samples=1, manual_seed=seed)
+        elif args.data_distribution == 'manual_extreme_heterogeneity':
+            test_partitioner.manual_allocating_noniid(args.n_dominated_class, 0.99, 1.0)
+        else:
+            raise ValueError("Input data distribution is not supported")
         distributed_testloaders = test_partitioner.get_distributed_data(batch_size=args.batch)
         eval_loss_record, eval_acc_record = train_eval_pFedPG(clients=clients,
                                                               prompt_gen=prompt_gen,
@@ -199,9 +204,10 @@ if __name__ == '__main__':
                                                               output_file=log_file_local_training,
                                                               inner_lr=args.lr,
                                                               prompt_lr=args.prompt_lr,
-                                                              print_output=True)
+                                                              print_output=True,
+                                                              device=args.device)
         evaluate_all_pFedPG(clients=clients, all_test_loader=testloader, prompt_gen=prompt_gen, vit_net=vit_net, 
-                            output_file=log_file_global_aggregation)
+                            output_file=log_file_global_aggregation, device=args.device)
     else:
         raise ValueError("Algorithm is not supported")
     #save record to npy file

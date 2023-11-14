@@ -9,12 +9,13 @@ from util.train_eval import train, evaluate, train_scaffold
 from util.print_info import print_epoch_end
 
 class scaffold(fedavg):
-    def __init__(self, server_model, scenario, loss_fun, fed_method='scaffold'):
-        super(scaffold, self).__init__(server_model, scenario, loss_fun, fed_method)
-        self.personalized_model_weights = self.scenario.init_personalized_model_weights(server_model)
-        self.personalized_control = [OrderedDict() for _ in range(scenario.n_clients)]
-        self.personalized_delta_control = [OrderedDict() for _ in range(scenario.n_clients)]
-        self.personalized_delta_y = [OrderedDict() for _ in range(scenario.n_clients)]
+    def __init__(self, server_model, scenario, loss_fun, fed_method='scaffold', device='cuda'):
+        super(scaffold, self).__init__(server_model, scenario, loss_fun, fed_method, device)
+        #self.device = device
+        self.personalized_model_weights = self.scenario.init_personalized_model_weights(server_model, device=device)
+        self.personalized_control = [OrderedDict() for _ in range(self.scenario.n_clients)]
+        self.personalized_delta_control = [OrderedDict() for _ in range(self.scenario.n_clients)]
+        self.personalized_delta_y = [OrderedDict() for _ in range(self.scenario.n_clients)]
     #def init_contorl_parameters_storage(self, device='cuda'):
         for i in range(self.scenario.n_clients):
             for key in self.server_model.trainable_keys:
@@ -74,7 +75,7 @@ class scaffold(fedavg):
                 self.client_model[i].train()
                 l, t, a = train_scaffold(self.client_model[i], self.server_model,
                                          self.selected_distributed_dataloaders[i],
-                                         optimizer, self.loss_fun, epochs)
+                                         optimizer, self.loss_fun, epochs, self.device)
                 if print_output:
                     print_epoch_end(epoch, l, t, a, output_file)
         self.update_client_controls(epochs, l)
@@ -82,6 +83,7 @@ class scaffold(fedavg):
 
     def server_aggre(self):
         self.server_model, self.client_model = communication(self.server_model, self.client_model,
-                                                self.selected_client_weights, self.fed_method)
+                                                             self.selected_client_weights, self.fed_method, 
+                                                             self.scenario.n_clients, self.device)
         #print(f'Store aggre model to personalized stoarage')
         self.reconnect2personalized_model_weights()
